@@ -1,139 +1,124 @@
 import tkinter as tk
 from tkinter import messagebox
-import random
 
-class TicTacToeGUI:
+class TicTacToe:
     def __init__(self):
         self.window = tk.Tk()
         self.window.title("Tic-Tac-Toe")
         
-        # Initialize game variables
         self.board = [' ' for _ in range(9)]
         self.buttons = []
         self.game_active = False
         
-        # Create symbol selection frame
-        self.selection_frame = tk.Frame(self.window)
-        self.selection_frame.pack(pady=10)
+        self.choice_frame = tk.Frame(self.window)
+        self.choice_frame.pack(pady=10)
         
-        tk.Label(self.selection_frame, text="Choose your symbol:").pack()
+        tk.Label(self.choice_frame, text="Choose your symbol:").pack()
         
-        # Symbol selection buttons
-        self.x_button = tk.Button(self.selection_frame, text="X", width=10, 
+        self.x_button = tk.Button(self.choice_frame, text="X", width=10, 
                                 command=lambda: self.start_game('X'))
         self.x_button.pack(side=tk.LEFT, padx=5)
         
-        self.o_button = tk.Button(self.selection_frame, text="O", width=10,
+        self.o_button = tk.Button(self.choice_frame, text="O", width=10,
                                 command=lambda: self.start_game('O'))
         self.o_button.pack(side=tk.LEFT, padx=5)
         
-        # Create game board frame
         self.game_frame = tk.Frame(self.window)
         self.game_frame.pack()
         
-        # Create game board buttons
         for i in range(3):
             for j in range(3):
                 button = tk.Button(self.game_frame, text="", width=10, height=3,
-                                 command=lambda row=i, col=j: self.make_move(row, col))
+                                 command=lambda row=i, col=j: self.player_move(row, col))
                 button.grid(row=i, column=j, padx=2, pady=2)
                 self.buttons.append(button)
                 button['state'] = 'disabled'
         
-        # Create reset button
         self.reset_button = tk.Button(self.window, text="Reset Game", 
-                                    command=self.reset_game)
+                                    command=self.reset)
         self.reset_button.pack(pady=10)
         
-    def start_game(self, human_symbol):
-        """Initialize the game with the chosen symbol"""
-        self.human = human_symbol
-        self.ai = 'O' if human_symbol == 'X' else 'X'
+    def start_game(self, player_symbol):
+        self.player = player_symbol
+        self.computer = 'O' if player_symbol == 'X' else 'X'
         self.game_active = True
         
-        # Enable game board buttons
         for button in self.buttons:
             button['state'] = 'normal'
             
-        # Disable symbol selection
         self.x_button['state'] = 'disabled'
         self.o_button['state'] = 'disabled'
         
-        # If AI goes first (human chose O), make AI move
-        if self.human == 'O':
-            self.make_ai_move()
+        if self.player == 'O':
+            self.computer_move()
     
-    def make_move(self, row, col):
-        """Handle human player's move"""
+    def player_move(self, row, col):
         if not self.game_active:
             return
             
-        position = row * 3 + col
-        if self.board[position] == ' ':
-            self.board[position] = self.human
-            self.buttons[position].config(text=self.human)
+        pos = row * 3 + col
+        if self.board[pos] == ' ':
+            self.board[pos] = self.player
+            self.buttons[pos].config(text=self.player)
             
-            if self.check_winner(self.human):
+            if self.check_win(self.player):
                 messagebox.showinfo("Game Over", "You win!")
                 self.game_active = False
-            elif self.is_board_full():
+            elif self.is_full():
                 messagebox.showinfo("Game Over", "It's a draw!")
                 self.game_active = False
             else:
-                self.make_ai_move()
+                self.computer_move()
     
-    def make_ai_move(self):
-        """Make AI's move using minimax algorithm"""
-        move = self.get_best_move()
-        self.board[move] = self.ai
-        self.buttons[move].config(text=self.ai)
+    def computer_move(self):
+        move = self.find_best_move()
+        self.board[move] = self.computer
+        self.buttons[move].config(text=self.computer)
         
-        if self.check_winner(self.ai):
-            messagebox.showinfo("Game Over", "AI wins!")
+        if self.check_win(self.computer):
+            messagebox.showinfo("Game Over", "Computer wins!")
             self.game_active = False
-        elif self.is_board_full():
+        elif self.is_full():
             messagebox.showinfo("Game Over", "It's a draw!")
             self.game_active = False
     
-    def minimax(self, depth, alpha, beta, is_maximizing):
-        """Minimax algorithm with alpha-beta pruning"""
-        if self.check_winner(self.ai):
+    def minimax(self, depth, alpha, beta, is_max):
+        if self.check_win(self.computer):
             return 1
-        if self.check_winner(self.human):
+        if self.check_win(self.player):
             return -1
-        if self.is_board_full():
+        if self.is_full():
             return 0
             
-        if is_maximizing:
-            max_eval = float('-inf')
-            for move in self.get_available_moves():
-                self.board[move] = self.ai
-                eval = self.minimax(depth + 1, alpha, beta, False)
+        if is_max:
+            best = float('-inf')
+            for move in self.empty_squares():
+                self.board[move] = self.computer
+                score = self.minimax(depth + 1, alpha, beta, False)
                 self.board[move] = ' '
-                max_eval = max(max_eval, eval)
-                alpha = max(alpha, eval)
+                best = max(best, score)
+                alpha = max(alpha, score)
                 if beta <= alpha:
                     break
-            return max_eval
+            return best
         else:
-            min_eval = float('inf')
-            for move in self.get_available_moves():
-                self.board[move] = self.human
-                eval = self.minimax(depth + 1, alpha, beta, True)
+            best = float('inf')
+            for move in self.empty_squares():
+                self.board[move] = self.player
+                score = self.minimax(depth + 1, alpha, beta, True)
                 self.board[move] = ' '
-                min_eval = min(min_eval, eval)
-                beta = min(beta, eval)
+                best = min(best, score)
+                beta = min(beta, score)
                 if beta <= alpha:
                     break
-            return min_eval
+            return best
     
-    def get_best_move(self):
-        """Get the optimal move for the AI"""
+    def find_best_move(self):
         best_score = float('-inf')
-        best_move = None
+        best_move = 0
         
-        for move in self.get_available_moves():
-            self.board[move] = self.ai
+        for move in self.empty_squares():
+            self.board[move] = self.computer
             score = self.minimax(0, float('-inf'), float('inf'), False)
             self.board[move] = ' '
             if score > best_score:
@@ -142,50 +127,39 @@ class TicTacToeGUI:
         
         return best_move
     
-    def get_available_moves(self):
-        """Get list of empty positions"""
+    def empty_squares(self):
         return [i for i, spot in enumerate(self.board) if spot == ' ']
     
-    def is_board_full(self):
-        """Check if the board is full"""
+    def is_full(self):
         return ' ' not in self.board
     
-    def check_winner(self, player):
-        """Check if the given player has won"""
-        # Check rows
+    def check_win(self, mark):
         for i in range(0, 9, 3):
-            if all(self.board[i+j] == player for j in range(3)):
+            if all(self.board[i+j] == mark for j in range(3)):
                 return True
-        # Check columns
         for i in range(3):
-            if all(self.board[i+j*3] == player for j in range(3)):
+            if all(self.board[i+j*3] == mark for j in range(3)):
                 return True
-        # Check diagonals
-        if all(self.board[i] == player for i in [0, 4, 8]):
+        if all(self.board[i] == mark for i in [0, 4, 8]):
             return True
-        if all(self.board[i] == player for i in [2, 4, 6]):
+        if all(self.board[i] == mark for i in [2, 4, 6]):
             return True
         return False
     
-    def reset_game(self):
-        """Reset the game to initial state"""
-        # Clear board
+    def reset(self):
         self.board = [' ' for _ in range(9)]
         self.game_active = False
         
-        # Reset buttons
         for button in self.buttons:
             button.config(text="")
             button['state'] = 'disabled'
         
-        # Enable symbol selection
         self.x_button['state'] = 'normal'
         self.o_button['state'] = 'normal'
     
     def run(self):
-        """Start the game window"""
         self.window.mainloop()
 
 if __name__ == "__main__":
-    game = TicTacToeGUI()
+    game = TicTacToe()
     game.run()
